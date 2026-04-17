@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MFL Pro Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --green: #00ff87;
+      --green-dim: #00cc6a;
+      --dark: #0a0a0a;
+      --surface: #111111;
+      --surface2: #1a1a1a;
+      --surface3: #222222;
+      --border: #2a2a2a;
+      --text: #f0f0f0;
+      --text-muted: #666;
+      --red: #ff4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--dark); color: var(--text); font-family: 'Barlow', sans-serif; min-height: 100vh; }
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .logo { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 1.5rem; letter-spacing: 0.05em; color: var(--green); }
+    .logo span { color: var(--text); }
+    .subtitle { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; }
+    .header-right { font-size: 0.75rem; color: var(--text-muted); text-align: right; line-height: 1.6; }
+    .main { padding: 2rem; max-width: 1600px; margin: 0 auto; }
+    .stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; }
+    .stat-card .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); margin-bottom: 0.5rem; }
+    .stat-card .value { font-family: 'Barlow Condensed', sans-serif; font-size: 2rem; font-weight: 700; color: var(--green); }
+    .filters { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
+    .filter-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    .filter-group label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+    select, input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 0.5rem 0.75rem; border-radius: 6px; font-family: 'Barlow', sans-serif; font-size: 0.875rem; outline: none; transition: border-color 0.15s; }
+    select:focus, input:focus { border-color: var(--green); }
+    select { min-width: 140px; cursor: pointer; }
+    input { width: 120px; }
+    .btn { background: var(--green); color: var(--dark); border: none; padding: 0.5rem 1.25rem; border-radius: 6px; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 0.9rem; letter-spacing: 0.05em; cursor: pointer; text-transform: uppercase; transition: background 0.15s; align-self: flex-end; }
+    .btn:hover { background: var(--green-dim); }
+    .btn-secondary { background: var(--surface3); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--border); }
+    .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .table-header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .table-header h2 { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 1.1rem; letter-spacing: 0.05em; text-transform: uppercase; }
+    .result-count { font-size: 0.8rem; color: var(--text-muted); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    thead th { background: var(--surface2); padding: 0.75rem 1rem; text-align: left; font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+    td { padding: 0.75rem 1rem; white-space: nowrap; }
+    .player-name { font-weight: 600; }
+    .player-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.05em; text-transform: uppercase; }
+    .badge-pos { background: rgba(0,255,135,0.1); color: var(--green); border: 1px solid rgba(0,255,135,0.2); }
+    .change { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 1rem; }
+    .change.up { color: var(--green); }
+    .change.down { color: var(--red); }
+    .change.none { color: var(--text-muted); }
+    .ovr-badge { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 1rem; }
+    .loading-screen { text-align: center; padding: 4rem 2rem; }
+    .loading-screen h3 { font-family: 'Barlow Condensed', sans-serif; font-size: 1.3rem; margin-bottom: 1rem; color: var(--text-muted); }
+    .spinner { width: 40px; height: 40px; border: 2px solid var(--border); border-top-color: var(--green); border-radius: 50%; margin: 0 auto 1.5rem; animation: spin 0.8s linear infinite; }
+    .progress-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; max-width: 300px; margin: 0 auto 0.75rem; }
+    .progress-fill { height: 100%; background: var(--green); border-radius: 2px; transition: width 0.3s; }
+    .progress-status { font-size: 0.8rem; color: var(--text-muted); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty { text-align: center; padding: 4rem; color: var(--text-muted); }
+    .empty h3 { font-family: 'Barlow Condensed', sans-serif; font-size: 1.2rem; margin-bottom: 0.5rem; }
+    .pagination { display: flex; justify-content: center; align-items: center; gap: 0.5rem; padding: 1rem; border-top: 1px solid var(--border); }
+    .page-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 0.4rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; transition: all 0.15s; }
+    .page-btn:hover { background: var(--green); color: var(--dark); border-color: var(--green); }
+    .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .page-info { font-size: 0.8rem; color: var(--text-muted); padding: 0 0.5rem; }
+    .tab-bar { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+    .tab { font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.5rem 1.25rem; border-radius: 6px; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); transition: all 0.15s; }
+    .tab.active { background: var(--green); color: var(--dark); border-color: var(--green); }
+    .error-msg { background: rgba(255,68,68,0.1); border: 1px solid rgba(255,68,68,0.3); color: var(--red); padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; font-size: 0.875rem; }
+    .reload-btn { background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 0.3rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-family: 'Barlow', sans-serif; transition: all 0.15s; }
+    .reload-btn:hover { border-color: var(--green); color: var(--green); }
+    .top5-list { list-style: none; margin-top: 0.25rem; }
+    .top5-list li { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--border); font-size: 0.78rem; }
+    .top5-list li:last-child { border-bottom: none; }
+    .top5-name { color: var(--text); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+    .top5-score { color: var(--green); font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 1rem; flex-shrink: 0; margin-left: 8px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">MFL <span>Pro Tracker</span></div>
+    <div class="subtitle">Player Improvement Report</div>
+  </div>
+  <div class="header-right">
+    <div id="last-updated"></div>
+    <button class="reload-btn" onclick="reloadData()">↺ Refresh data</button>
+  </div>
+</header>
+
+<div class="main">
+  <div class="stats-bar">
+    <div class="stat-card"><div class="label">Players Improved</div><div class="value" id="stat-improved">—</div></div>
+    <div class="stat-card"><div class="label">Avg Overall Change</div><div class="value" id="stat-avg">—</div></div>
+    <div class="stat-card" style="grid-column:span 2;">
+      <div class="label" style="margin-bottom:0.6rem;">Top 5 Most Improved (cumulative score)</div>
+      <ul class="top5-list" id="stat-top5"><li style="color:var(--text-muted);font-size:0.8rem;">Loading...</li></ul>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab active" onclick="setTab('improvements', this)">Improvements</div>
+    <div class="tab" onclick="setTab('all', this)">All Players</div>
+  </div>
+
+  <div class="filters">
+    <div class="filter-group">
+      <label>Position</label>
+      <select id="filter-position" onchange="applyFilters()">
+        <option value="">All Positions</option>
+        <option>GK</option><option>CB</option><option>LB</option><option>RB</option>
+        <option>LWB</option><option>RWB</option><option>CDM</option><option>CM</option>
+        <option>CAM</option><option>LM</option><option>RM</option><option>LW</option>
+        <option>RW</option><option>CF</option><option>ST</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Nationality</label>
+      <input type="text" id="filter-nationality" placeholder="e.g. ENGLAND" oninput="applyFilters()" />
+    </div>
+    <div class="filter-group">
+      <label>Min Overall</label>
+      <input type="number" id="filter-min-overall" placeholder="e.g. 80" min="0" max="99" oninput="applyFilters()" />
+    </div>
+    <div class="filter-group" id="min-change-group">
+      <label>Min OVR Change</label>
+      <input type="number" id="filter-min-change" placeholder="e.g. 1" min="1" max="10" oninput="applyFilters()" />
+    </div>
+    <div class="filter-group">
+      <label>Club Division</label>
+      <select id="filter-division" onchange="applyFilters()">
+        <option value="">All Divisions</option>
+        <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+      </select>
+    </div>
+    <div class="filter-group" id="sort-group">
+      <label>Sort By</label>
+      <select id="filter-sort" onchange="applyFilters()">
+        <option value="total_change">Total Change</option>
+        <option value="overall_change">Overall Change</option>
+        <option value="overall">Current Overall</option>
+        <option value="pace_change">Pace Change</option>
+        <option value="shooting_change">Shooting Change</option>
+        <option value="passing_change">Passing Change</option>
+        <option value="dribbling_change">Dribbling Change</option>
+        <option value="defense_change">Defense Change</option>
+        <option value="physical_change">Physical Change</option>
+      </select>
+    </div>
+    <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
+    <button class="btn btn-secondary" onclick="exportCSV()">Export CSV</button>
+  </div>
+
+  <div id="error-msg" class="error-msg" style="display:none;"></div>
+
+  <div class="table-wrap">
+    <div class="table-header">
+      <h2 id="table-title">Player Improvements</h2>
+      <span class="result-count" id="result-count"></span>
+    </div>
+    <div id="table-container"></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://dmaadocmrhfzbhweznil.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_NLKRB2kFO6J1DckCJP1Jlw_Pu2nR4bO';
+const PAGE_SIZE = 100;
+const FETCH_BATCH = 1000;
+const hdrs = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
+
+// In-memory store — loaded once, filtered locally
+let sosMap = {};
+let allCurrent = [];
+let improvementsCache = [];
+let currentTab = 'improvements';
+let filteredData = [];
+let currentPage = 1;
+let dataLoaded = false;
+
+function setProgress(pct, status) {
+  const fill = document.getElementById('progress-fill');
+  const stat = document.getElementById('progress-status');
+  const title = document.getElementById('loading-title');
+  if (fill) fill.style.width = pct + '%';
+  if (stat) stat.textContent = status;
+  if (title) title.textContent = 'Loading data...';
+}
+
+async function fetchAllRows(table, select = '*') {
+  let all = [];
+  let offset = 0;
+  while (true) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=${select}&order=ID.asc&limit=${FETCH_BATCH}&offset=${offset}`, { headers: hdrs });
+    if (!res.ok) throw new Error(`Failed to fetch ${table}: ${res.status}`);
+    const data = await res.json();
+    all = all.concat(data);
+    if (data.length < FETCH_BATCH) break;
+    offset += FETCH_BATCH;
+  }
+  // Deduplicate by ID just in case
+  const seen = new Set();
+  return all.filter(p => {
+    if (seen.has(p.ID)) return false;
+    seen.add(p.ID);
+    return true;
+  });
+}
+
+async function loadAllData() {
+  dataLoaded = false;
+  document.getElementById('table-container').innerHTML = `
+    <div class="loading-screen">
+      <div class="spinner"></div>
+      <h3 id="loading-title">Loading data</h3>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+      <div class="progress-status" id="progress-status">Connecting to Supabase...</div>
+    </div>`;
+  document.getElementById('error-msg').style.display = 'none';
+
+  try {
+    setProgress(5, 'Fetching SOS baseline...');
+    const sosRaw = await fetchAllRows('mfl_players_sos', 'ID,overall,pace,shooting,passing,dribbling,defense,physical');
+    sosMap = {};
+    sosRaw.forEach(p => sosMap[p.ID] = p);
+    setProgress(40, `SOS loaded: ${sosRaw.length.toLocaleString()} players. Fetching current data...`);
+
+    allCurrent = await fetchAllRows('mfl_players_current');
+    setProgress(80, `Current loaded: ${allCurrent.length.toLocaleString()} players. Computing improvements...`);
+
+    // Pre-compute improvements for all players
+    improvementsCache = allCurrent
+      .filter(p => sosMap[p.ID])
+      .map(p => {
+        const s = sosMap[p.ID];
+        return {
+          ...p,
+          sos_overall: s.overall,
+          overall_change: (p.overall || 0) - (s.overall || 0),
+          pace_change: (p.pace || 0) - (s.pace || 0),
+          shooting_change: (p.shooting || 0) - (s.shooting || 0),
+          passing_change: (p.passing || 0) - (s.passing || 0),
+          dribbling_change: (p.dribbling || 0) - (s.dribbling || 0),
+          defense_change: (p.defense || 0) - (s.defense || 0),
+          physical_change: (p.physical || 0) - (s.physical || 0),
+        };
+      })
+      .map(p => ({
+        ...p,
+        total_change: Math.max(0, p.overall_change) + Math.max(0, p.pace_change) +
+          Math.max(0, p.shooting_change) + Math.max(0, p.passing_change) +
+          Math.max(0, p.dribbling_change) + Math.max(0, p.defense_change) +
+          Math.max(0, p.physical_change)
+      }))
+      .filter(p =>
+        p.overall_change > 0 || p.pace_change > 0 || p.shooting_change > 0 ||
+        p.passing_change > 0 || p.dribbling_change > 0 || p.defense_change > 0 || p.physical_change > 0
+      );
+
+    setProgress(100, 'Done');
+    dataLoaded = true;
+
+    document.getElementById('last-updated').textContent = `Loaded: ${new Date().toLocaleTimeString()}`;
+    document.getElementById('stat-improved').textContent = '—';
+
+    applyFilters();
+  } catch(e) {
+    document.getElementById('error-msg').textContent = `Error: ${e.message}`;
+    document.getElementById('error-msg').style.display = 'block';
+    document.getElementById('table-container').innerHTML = '<div class="empty"><h3>Failed to load data</h3><p>Check your Supabase connection</p></div>';
+  }
+}
+
+function getFilters() {
+  return {
+    position: document.getElementById('filter-position').value,
+    nationality: document.getElementById('filter-nationality').value.trim().toUpperCase(),
+    minOverall: parseInt(document.getElementById('filter-min-overall').value) || 0,
+    minChange: parseInt(document.getElementById('filter-min-change').value) || 0,
+    division: document.getElementById('filter-division').value,
+    sort: document.getElementById('filter-sort').value,
+  };
+}
+
+function applyFilters() {
+  if (!dataLoaded) return;
+  const f = getFilters();
+  currentPage = 1;
+
+  let base = currentTab === 'improvements'
+    ? improvementsCache.filter(p =>
+        (!f.position || p.position === f.position) &&
+        (!f.nationality || p.nationality === f.nationality) &&
+        (!f.minOverall || p.overall >= f.minOverall) &&
+        (!f.division || String(p.club_division) === f.division) &&
+        (!f.minChange || p.overall_change >= f.minChange)
+      )
+    : allCurrent.filter(p =>
+        (!f.position || p.position === f.position) &&
+        (!f.nationality || p.nationality === f.nationality) &&
+        (!f.minOverall || p.overall >= f.minOverall) &&
+        (!f.division || String(p.club_division) === f.division)
+      );
+
+  // Sort
+  if (currentTab === 'improvements') {
+    base.sort((a, b) => (b[f.sort] || 0) - (a[f.sort] || 0));
+  } else {
+    base.sort((a, b) => (b.overall || 0) - (a.overall || 0));
+  }
+
+  filteredData = base;
+  renderTable();
+  updateStats();
+}
+
+function changeVal(val) {
+  if (!val || val === 0) return `<span class="change none">—</span>`;
+  if (val > 0) return `<span class="change up">+${val}</span>`;
+  return `<span class="change down">${val}</span>`;
+}
+
+function renderTable() {
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const page = filteredData.slice(start, start + PAGE_SIZE);
+  document.getElementById('result-count').textContent = `${filteredData.length.toLocaleString()} players`;
+
+  if (!filteredData.length) {
+    document.getElementById('table-container').innerHTML = '<div class="empty"><h3>No players found</h3><p>Try adjusting your filters</p></div>';
+    return;
+  }
+
+  let rows, thead;
+
+  if (currentTab === 'improvements') {
+    const sortVal = document.getElementById('filter-sort').value;
+    const thStyle = (val) => `cursor:pointer;${sortVal===val?'color:var(--green)':''}`;
+    const thClick = (val) => `onclick="document.getElementById('filter-sort').value='${val}';applyFilters()"`;
+    thead = `<tr>
+      <th>Player</th><th>Pos</th><th>Age</th><th>Overall</th>
+      <th style="${thStyle('total_change')}" ${thClick('total_change')}>TOTAL ▲</th>
+      <th style="${thStyle('overall_change')}" ${thClick('overall_change')}>OVR ▲</th>
+      <th style="${thStyle('pace_change')}" ${thClick('pace_change')}>PAC ▲</th>
+      <th style="${thStyle('shooting_change')}" ${thClick('shooting_change')}>SHO ▲</th>
+      <th style="${thStyle('passing_change')}" ${thClick('passing_change')}>PAS ▲</th>
+      <th style="${thStyle('dribbling_change')}" ${thClick('dribbling_change')}>DRI ▲</th>
+      <th style="${thStyle('defense_change')}" ${thClick('defense_change')}>DEF ▲</th>
+      <th style="${thStyle('physical_change')}" ${thClick('physical_change')}>PHY ▲</th>
+      <th>Owner</th><th>Offers</th>
+    </tr>`;
+    rows = page.map(p => `<tr>
+      <td><div class="player-name">${p.first_name} ${p.last_name}</div><div class="player-sub">${p.nationality||'—'} · ${p.club||'—'} (Div ${p.club_division||'—'})</div></td>
+      <td><span class="badge badge-pos">${p.position||'—'}</span></td>
+      <td>${p.age||'—'}</td>
+      <td><span class="ovr-badge">${p.sos_overall??'—'} → ${p.overall??'—'}</span></td>
+      <td><span class="change up" style="font-size:1.1rem;">+${p.total_change||0}</span></td>
+      <td>${changeVal(p.overall_change)}</td><td>${changeVal(p.pace_change)}</td>
+      <td>${changeVal(p.shooting_change)}</td><td>${changeVal(p.passing_change)}</td>
+      <td>${changeVal(p.dribbling_change)}</td><td>${changeVal(p.defense_change)}</td>
+      <td>${changeVal(p.physical_change)}</td>
+      <td>${p.owner||'—'}</td><td>${p.offer_status||'—'}</td>
+    </tr>`).join('');
+  } else {
+    thead = `<tr><th>Player</th><th>Pos</th><th>Age</th><th>OVR</th><th>PAC</th><th>SHO</th><th>PAS</th><th>DRI</th><th>DEF</th><th>PHY</th><th>Owner</th><th>Offers</th></tr>`;
+    rows = page.map(p => `<tr>
+      <td><div class="player-name">${p.first_name} ${p.last_name}</div><div class="player-sub">${p.nationality||'—'} · ${p.club||'—'} (Div ${p.club_division||'—'})</div></td>
+      <td><span class="badge badge-pos">${p.position||'—'}</span></td>
+      <td>${p.age||'—'}</td>
+      <td><span class="ovr-badge">${p.overall??'—'}</span></td>
+      <td>${p.pace??'—'}</td><td>${p.shooting??'—'}</td><td>${p.passing??'—'}</td>
+      <td>${p.dribbling??'—'}</td><td>${p.defense??'—'}</td><td>${p.physical??'—'}</td>
+      <td>${p.owner||'—'}</td><td>${p.offer_status||'—'}</td>
+    </tr>`).join('');
+  }
+
+  const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
+  const pagination = totalPages > 1 ? `<div class="pagination">
+    <button class="page-btn" onclick="changePage(${currentPage-1})" ${currentPage===1?'disabled':''}>← Prev</button>
+    <span class="page-info">Page ${currentPage} of ${totalPages} (${filteredData.length.toLocaleString()} total)</span>
+    <button class="page-btn" onclick="changePage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>Next →</button>
+  </div>` : '';
+
+  document.getElementById('table-container').innerHTML = `<table><thead>${thead}</thead><tbody>${rows}</tbody></table>${pagination}`;
+}
+
+function updateStats() {
+  if (currentTab === 'improvements') {
+    const d = filteredData;
+    const avg = d.length ? (d.reduce((s,p) => s+(p.overall_change||0), 0)/d.length).toFixed(1) : 0;
+    document.getElementById('stat-improved').textContent = d.length.toLocaleString();
+    document.getElementById('stat-avg').textContent = `+${avg}`;
+
+    // Top 5 by cumulative score (sum of all positive stat changes)
+    const scored = improvementsCache.map(p => ({
+      name: `${p.first_name} ${p.last_name}`,
+      pos: p.position || '',
+      score: Math.max(0, p.overall_change||0) + Math.max(0, p.pace_change||0) +
+             Math.max(0, p.shooting_change||0) + Math.max(0, p.passing_change||0) +
+             Math.max(0, p.dribbling_change||0) + Math.max(0, p.defense_change||0) +
+             Math.max(0, p.physical_change||0)
+    })).sort((a,b) => b.score - a.score).slice(0,5);
+
+    const top5El = document.getElementById('stat-top5');
+    if (scored.length) {
+      top5El.innerHTML = scored.map((p,i) => `
+        <li>
+          <span class="top5-name">${i+1}. ${p.name} <span style="color:var(--text-muted);font-size:0.7rem;">${p.pos}</span></span>
+          <span class="top5-score">+${p.score}</span>
+        </li>`).join('');
+    } else {
+      top5El.innerHTML = '<li style="color:var(--text-muted);font-size:0.8rem;">No data</li>';
+    }
+  } else {
+    document.getElementById('stat-improved').textContent = '—';
+    document.getElementById('stat-avg').textContent = '—';
+    document.getElementById('stat-top5').innerHTML = '<li style="color:var(--text-muted);font-size:0.8rem;">—</li>';
+  }
+  
+}
+
+function changePage(page) {
+  currentPage = page;
+  renderTable();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function setTab(tab, el) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('min-change-group').style.display = tab === 'improvements' ? '' : 'none';
+  document.getElementById('sort-group').style.display = tab === 'improvements' ? '' : 'none';
+  document.getElementById('table-title').textContent = tab === 'improvements' ? 'Player Improvements' : 'All Players';
+  applyFilters();
+}
+
+function resetFilters() {
+  document.getElementById('filter-position').value = '';
+  document.getElementById('filter-nationality').value = '';
+  document.getElementById('filter-min-overall').value = '';
+  document.getElementById('filter-min-change').value = '';
+  document.getElementById('filter-division').value = '';
+  document.getElementById('filter-sort').value = 'overall_change';
+  applyFilters();
+}
+
+function reloadData() { loadAllData(); }
+
+function exportCSV() {
+  if (!filteredData.length) return;
+  const isImp = currentTab === 'improvements';
+  const h = isImp
+    ? ['ID','Name','Position','Age','Nationality','Club','Division','OVR Before','OVR After','OVR Change','PAC Change','SHO Change','PAS Change','DRI Change','DEF Change','PHY Change','Owner','Offer Status']
+    : ['ID','Name','Position','Age','Nationality','Club','Division','Overall','Pace','Shooting','Passing','Dribbling','Defense','Physical','Owner','Offer Status'];
+  const rows = filteredData.map(p => isImp
+    ? [p.ID,`${p.first_name} ${p.last_name}`,p.position,p.age,p.nationality,p.club,p.club_division,p.sos_overall,p.overall,p.overall_change,p.pace_change,p.shooting_change,p.passing_change,p.dribbling_change,p.defense_change,p.physical_change,p.owner,p.offer_status]
+    : [p.ID,`${p.first_name} ${p.last_name}`,p.position,p.age,p.nationality,p.club,p.club_division,p.overall,p.pace,p.shooting,p.passing,p.dribbling,p.defense,p.physical,p.owner,p.offer_status]
+  );
+  const csv = [h,...rows].map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download = `mfl_${currentTab}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+loadAllData();
+</script>
+</body>
+</html>
