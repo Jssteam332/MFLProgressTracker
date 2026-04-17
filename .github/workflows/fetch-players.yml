@@ -1,0 +1,25 @@
+name: Daily MFL Player Fetch
+
+on:
+  schedule:
+    - cron: '0 1 * * *'  # Runs every day at 1:00 AM UTC (11:00 AM AEST)
+  workflow_dispatch:       # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  fetch-players:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch MFL players and upsert to Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: node scripts/fetch-players.js
