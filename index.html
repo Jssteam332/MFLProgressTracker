@@ -60,6 +60,7 @@
     .change.down { color: var(--red); }
     .change.none { color: var(--text-muted); }
     .ovr-badge { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 1rem; }
+    .id-cell { font-family: 'Barlow Condensed', sans-serif; font-size: 0.8rem; color: var(--text-muted); }
     .loading-screen { text-align: center; padding: 4rem 2rem; }
     .loading-screen h3 { font-family: 'Barlow Condensed', sans-serif; font-size: 1.3rem; margin-bottom: 1rem; color: var(--text-muted); }
     .spinner { width: 40px; height: 40px; border: 2px solid var(--border); border-top-color: var(--green); border-radius: 50%; margin: 0 auto 1.5rem; animation: spin 0.8s linear infinite; }
@@ -145,6 +146,10 @@
         <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
       </select>
     </div>
+    <div class="filter-group">
+      <label>Min Player ID</label>
+      <input type="number" id="filter-min-id" placeholder="e.g. 300000" oninput="applyFilters()" style="width:140px"/>
+    </div>
     <div class="filter-group" id="sort-group">
       <label>Sort By</label>
       <select id="filter-sort" onchange="applyFilters()">
@@ -157,6 +162,7 @@
         <option value="dribbling_change">Dribbling Change</option>
         <option value="defense_change">Defense Change</option>
         <option value="physical_change">Physical Change</option>
+        <option value="id_desc">Player ID (newest first)</option>
       </select>
     </div>
     <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
@@ -181,7 +187,6 @@ const PAGE_SIZE = 100;
 const FETCH_BATCH = 1000;
 const hdrs = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` };
 
-// In-memory store — loaded once, filtered locally
 let sosMap = {};
 let allCurrent = [];
 let improvementsCache = [];
@@ -193,10 +198,8 @@ let dataLoaded = false;
 function setProgress(pct, status) {
   const fill = document.getElementById('progress-fill');
   const stat = document.getElementById('progress-status');
-  const title = document.getElementById('loading-title');
   if (fill) fill.style.width = pct + '%';
   if (stat) stat.textContent = status;
-  if (title) title.textContent = 'Loading data...';
 }
 
 async function fetchAllRows(table, select = '*') {
@@ -210,7 +213,6 @@ async function fetchAllRows(table, select = '*') {
     if (data.length < FETCH_BATCH) break;
     offset += FETCH_BATCH;
   }
-  // Deduplicate by ID just in case
   const seen = new Set();
   return all.filter(p => {
     if (seen.has(p.ID)) return false;
@@ -240,7 +242,6 @@ async function loadAllData() {
     allCurrent = await fetchAllRows('mfl_players_current');
     setProgress(80, `Current loaded: ${allCurrent.length.toLocaleString()} players. Computing improvements...`);
 
-    // Pre-compute improvements for all players
     improvementsCache = allCurrent
       .filter(p => sosMap[p.ID])
       .map(p => {
@@ -271,10 +272,7 @@ async function loadAllData() {
 
     setProgress(100, 'Done');
     dataLoaded = true;
-
     document.getElementById('last-updated').textContent = `Loaded: ${new Date().toLocaleTimeString()}`;
-    document.getElementById('stat-improved').textContent = '—';
-
     applyFilters();
   } catch(e) {
     document.getElementById('error-msg').textContent = `Error: ${e.message}`;
@@ -290,6 +288,7 @@ function getFilters() {
     minOverall: parseInt(document.getElementById('filter-min-overall').value) || 0,
     minChange: parseInt(document.getElementById('filter-min-change').value) || 0,
     division: document.getElementById('filter-division').value,
+    minId: parseInt(document.getElementById('filter-min-id').value) || 0,
     sort: document.getElementById('filter-sort').value,
   };
 }
@@ -305,20 +304,29 @@ function applyFilters() {
         (!f.nationality || p.nationality === f.nationality) &&
         (!f.minOverall || p.overall >= f.minOverall) &&
         (!f.division || String(p.club_division) === f.division) &&
-        (!f.minChange || p.overall_change >= f.minChange)
+        (!f.minChange || p.overall_change >= f.minChange) &&
+        (!f.minId || (p.ID || 0) >= f.minId)
       )
     : allCurrent.filter(p =>
         (!f.position || p.position === f.position) &&
         (!f.nationality || p.nationality === f.nationality) &&
         (!f.minOverall || p.overall >= f.minOverall) &&
-        (!f.division || String(p.club_division) === f.division)
+        (!f.division || String(p.club_division) === f.division) &&
+        (!f.minId || (p.ID || 0) >= f.minId)
       );
 
-  // Sort
   if (currentTab === 'improvements') {
-    base.sort((a, b) => (b[f.sort] || 0) - (a[f.sort] || 0));
+    if (f.sort === 'id_desc') {
+      base.sort((a, b) => (b.ID || 0) - (a.ID || 0));
+    } else {
+      base.sort((a, b) => (b[f.sort] || 0) - (a[f.sort] || 0));
+    }
   } else {
-    base.sort((a, b) => (b.overall || 0) - (a.overall || 0));
+    if (f.sort === 'id_desc') {
+      base.sort((a, b) => (b.ID || 0) - (a.ID || 0));
+    } else {
+      base.sort((a, b) => (b.overall || 0) - (a.overall || 0));
+    }
   }
 
   filteredData = base;
@@ -349,6 +357,7 @@ function renderTable() {
     const thStyle = (val) => `cursor:pointer;${sortVal===val?'color:var(--green)':''}`;
     const thClick = (val) => `onclick="document.getElementById('filter-sort').value='${val}';applyFilters()"`;
     thead = `<tr>
+      <th style="${thStyle('id_desc')}" ${thClick('id_desc')}>ID</th>
       <th>Player</th><th>Pos</th><th>Age</th><th>Overall</th>
       <th style="${thStyle('total_change')}" ${thClick('total_change')}>TOTAL ▲</th>
       <th style="${thStyle('overall_change')}" ${thClick('overall_change')}>OVR ▲</th>
@@ -361,6 +370,7 @@ function renderTable() {
       <th>Owner</th><th>Offers</th>
     </tr>`;
     rows = page.map(p => `<tr>
+      <td class="id-cell">${p.ID||'—'}</td>
       <td><div class="player-name">${p.first_name} ${p.last_name}</div><div class="player-sub">${p.nationality||'—'} · ${p.club||'—'} (Div ${p.club_division||'—'})</div></td>
       <td><span class="badge badge-pos">${p.position||'—'}</span></td>
       <td>${p.age||'—'}</td>
@@ -373,8 +383,13 @@ function renderTable() {
       <td>${p.owner||'—'}</td><td>${p.offer_status||'—'}</td>
     </tr>`).join('');
   } else {
-    thead = `<tr><th>Player</th><th>Pos</th><th>Age</th><th>OVR</th><th>PAC</th><th>SHO</th><th>PAS</th><th>DRI</th><th>DEF</th><th>PHY</th><th>Owner</th><th>Offers</th></tr>`;
+    thead = `<tr>
+      <th>ID</th><th>Player</th><th>Pos</th><th>Age</th><th>OVR</th>
+      <th>PAC</th><th>SHO</th><th>PAS</th><th>DRI</th><th>DEF</th><th>PHY</th>
+      <th>Owner</th><th>Offers</th>
+    </tr>`;
     rows = page.map(p => `<tr>
+      <td class="id-cell">${p.ID||'—'}</td>
       <td><div class="player-name">${p.first_name} ${p.last_name}</div><div class="player-sub">${p.nationality||'—'} · ${p.club||'—'} (Div ${p.club_division||'—'})</div></td>
       <td><span class="badge badge-pos">${p.position||'—'}</span></td>
       <td>${p.age||'—'}</td>
@@ -402,7 +417,6 @@ function updateStats() {
     document.getElementById('stat-improved').textContent = d.length.toLocaleString();
     document.getElementById('stat-avg').textContent = `+${avg}`;
 
-    // Top 5 by cumulative score (sum of all positive stat changes)
     const scored = improvementsCache.map(p => ({
       name: `${p.first_name} ${p.last_name}`,
       pos: p.position || '',
@@ -427,7 +441,6 @@ function updateStats() {
     document.getElementById('stat-avg').textContent = '—';
     document.getElementById('stat-top5').innerHTML = '<li style="color:var(--text-muted);font-size:0.8rem;">—</li>';
   }
-  
 }
 
 function changePage(page) {
@@ -452,7 +465,8 @@ function resetFilters() {
   document.getElementById('filter-min-overall').value = '';
   document.getElementById('filter-min-change').value = '';
   document.getElementById('filter-division').value = '';
-  document.getElementById('filter-sort').value = 'overall_change';
+  document.getElementById('filter-min-id').value = '';
+  document.getElementById('filter-sort').value = 'total_change';
   applyFilters();
 }
 
@@ -462,8 +476,8 @@ function exportCSV() {
   if (!filteredData.length) return;
   const isImp = currentTab === 'improvements';
   const h = isImp
-    ? ['ID','Name','Position','Age','Nationality','Club','Division','OVR Before','OVR After','OVR Change','PAC Change','SHO Change','PAS Change','DRI Change','DEF Change','PHY Change','Owner','Offer Status']
-    : ['ID','Name','Position','Age','Nationality','Club','Division','Overall','Pace','Shooting','Passing','Dribbling','Defense','Physical','Owner','Offer Status'];
+    ? ['Player ID','Name','Position','Age','Nationality','Club','Division','OVR Before','OVR After','OVR Change','PAC Change','SHO Change','PAS Change','DRI Change','DEF Change','PHY Change','Owner','Offer Status']
+    : ['Player ID','Name','Position','Age','Nationality','Club','Division','Overall','Pace','Shooting','Passing','Dribbling','Defense','Physical','Owner','Offer Status'];
   const rows = filteredData.map(p => isImp
     ? [p.ID,`${p.first_name} ${p.last_name}`,p.position,p.age,p.nationality,p.club,p.club_division,p.sos_overall,p.overall,p.overall_change,p.pace_change,p.shooting_change,p.passing_change,p.dribbling_change,p.defense_change,p.physical_change,p.owner,p.offer_status]
     : [p.ID,`${p.first_name} ${p.last_name}`,p.position,p.age,p.nationality,p.club,p.club_division,p.overall,p.pace,p.shooting,p.passing,p.dribbling,p.defense,p.physical,p.owner,p.offer_status]
